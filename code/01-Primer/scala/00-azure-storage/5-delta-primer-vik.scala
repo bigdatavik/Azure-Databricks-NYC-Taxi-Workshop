@@ -48,12 +48,13 @@ booksDF.rdd.partitions.size
 // COMMAND ----------
 
 // MAGIC  %md
-// MAGIC  #### 1.0.2. Persist to Delta format
+// MAGIC #### 1.0.2. Persist to Delta format
 
 // COMMAND ----------
 
 //Destination directory for Delta table
-val deltaTableDirectory = "/mnt/workshop/curated/books"
+// val deltaTableDirectory = "/mnt/workshop/curated/books"
+val deltaTableDirectory = "/mnt/vm186007/files/curated/books"
 dbutils.fs.rm(deltaTableDirectory, recurse=true)
 
 //Persist dataframe to delta format without coalescing
@@ -62,45 +63,47 @@ booksDF.write.format("delta").save(deltaTableDirectory)
 // COMMAND ----------
 
 // MAGIC  %md
-// MAGIC  #### 1.0.3. Create Delta table
+// MAGIC #### 1.0.3. Create Delta table
 
 // COMMAND ----------
 
 // MAGIC %sql
-// MAGIC CREATE DATABASE IF NOT EXISTS books_db;
+// MAGIC CREATE DATABASE IF NOT EXISTS books_db_vkm;
 // MAGIC 
-// MAGIC USE books_db;
+// MAGIC USE books_db_vkm;
 // MAGIC DROP TABLE IF EXISTS books;
 // MAGIC CREATE TABLE books
 // MAGIC USING DELTA
-// MAGIC LOCATION "/mnt/workshop/curated/books";
+// MAGIC --LOCATION "/mnt/workshop/curated/books";
+// MAGIC LOCATION "/mnt/vm186007/files/curated/books";
 
 // COMMAND ----------
 
 // MAGIC %sql
-// MAGIC select * from books_db.books;
+// MAGIC select * from books_db_vkm.books;
 
 // COMMAND ----------
 
 // MAGIC  %md
-// MAGIC  #### 1.0.4. Performance optimization
+// MAGIC #### 1.0.4. Performance optimization
 // MAGIC  We will run the "OPTIMIZE" command to compact small files into larger for performance.
 // MAGIC  Note: The performance improvements are evident at scale
 
 // COMMAND ----------
 
 //1) Lets look at part file count, its 5
-display(dbutils.fs.ls("/mnt/workshop/curated/books"))
+//display(dbutils.fs.ls("/mnt/workshop/curated/books"))
+display(dbutils.fs.ls("/mnt/vm186007/files/curated/books"))
 
 // COMMAND ----------
 
 //2) Lets read the dataset and check the partition size, it should be the same as number of small files
-val preDeltaOptimizeDF = spark.sql("select * from books_db.books")
+val preDeltaOptimizeDF = spark.sql("select * from books_db_vkm.books")
 preDeltaOptimizeDF.rdd.partitions.size
 
 // COMMAND ----------
 
-// MAGIC %sql DESCRIBE DETAIL books_db.books;
+// MAGIC %sql DESCRIBE DETAIL books_db_vkm.books;
 // MAGIC --3) Lets run DESCRIBE DETAIL 
 // MAGIC --Notice that numFiles = 5
 
@@ -108,24 +111,25 @@ preDeltaOptimizeDF.rdd.partitions.size
 
 // MAGIC %sql
 // MAGIC --4) Now, lets run optimize
-// MAGIC USE books_db;
+// MAGIC USE books_db_vkm;
 // MAGIC OPTIMIZE books;
 
 // COMMAND ----------
 
-// MAGIC %sql DESCRIBE DETAIL books_db.books;
+// MAGIC %sql DESCRIBE DETAIL books_db_vkm.books;
 // MAGIC --5) Notice the number of files now - its 1 file
 
 // COMMAND ----------
 
 //6) Lets look at the part file count, its 6 now!
 //Guess why?
-display(dbutils.fs.ls("/mnt/workshop/curated/books"))
+//display(dbutils.fs.ls("/mnt/workshop/curated/books"))
+display(dbutils.fs.ls("/mnt/vm186007/files/curated/books"))
 
 // COMMAND ----------
 
 //7) Lets read the dataset and check the partition size, it should be the same as number of small files
-val postDeltaOptimizeDF = spark.sql("select * from books_db.books")
+val postDeltaOptimizeDF = spark.sql("select * from books_db_vkm.books")
 postDeltaOptimizeDF.rdd.partitions.size
 //Its 1, and not 6
 //Guess why?
@@ -140,12 +144,13 @@ postDeltaOptimizeDF.rdd.partitions.size
 
 // MAGIC %sql
 // MAGIC --8b) Run vacuum
-// MAGIC VACUUM books_db.books retain 0 hours;
+// MAGIC VACUUM books_db_vkm.books retain 0 hours;
 
 // COMMAND ----------
 
 //9) Lets look at the part file count, its 1 now!
-display(dbutils.fs.ls("/mnt/workshop/curated/books"))
+//display(dbutils.fs.ls("/mnt/workshop/curated/books"))
+display(dbutils.fs.ls("/mnt/vm186007/files/curated/books"))
 
 // COMMAND ----------
 
@@ -187,7 +192,7 @@ booksDF.write.format("delta").mode("append").save(deltaTableDirectory)
 // COMMAND ----------
 
 // MAGIC %sql
-// MAGIC Select * from books_db.books;
+// MAGIC Select * from books_db_vkm.books;
 
 // COMMAND ----------
 
@@ -196,7 +201,7 @@ booksDF.write.format("delta").mode("append").save(deltaTableDirectory)
 
 // COMMAND ----------
 
-// MAGIC %sql DESCRIBE DETAIL books_db.books;
+// MAGIC %sql DESCRIBE DETAIL books_db_vkm.books;
 
 // COMMAND ----------
 
@@ -206,8 +211,8 @@ booksDF.write.format("delta").mode("append").save(deltaTableDirectory)
 // COMMAND ----------
 
 // MAGIC %sql
-// MAGIC OPTIMIZE books_db.books;
-// MAGIC VACUUM books_db.books;
+// MAGIC OPTIMIZE books_db_vkm.books;
+// MAGIC VACUUM books_db_vkm.books;
 
 // COMMAND ----------
 
@@ -238,7 +243,7 @@ booksUpsertDF.createOrReplaceTempView("books_upserts")
 
 // MAGIC %sql
 // MAGIC --3) Execute upsert
-// MAGIC USE books_db;
+// MAGIC USE books_db_vkm;
 // MAGIC 
 // MAGIC MERGE INTO books
 // MAGIC USING books_upserts
@@ -255,25 +260,26 @@ booksUpsertDF.createOrReplaceTempView("books_upserts")
 
 // MAGIC %sql
 // MAGIC --4) Validate
-// MAGIC Select * from books_db.books;
+// MAGIC Select * from books_db_vkm.books;
 
 // COMMAND ----------
 
 // 5) Files? How many?
-display(dbutils.fs.ls("/mnt/workshop/curated/books"))
+//display(dbutils.fs.ls("/mnt/workshop/curated/books"))
+display(dbutils.fs.ls("/mnt/vm186007/files/curated/books"))
 
 // COMMAND ----------
 
 // MAGIC %sql 
 // MAGIC -- 6) What does describe detail say?
-// MAGIC DESCRIBE DETAIL books_db.books;
+// MAGIC DESCRIBE DETAIL books_db_vkm.books;
 
 // COMMAND ----------
 
 // MAGIC %sql
 // MAGIC -- 7) Lets optimize 
-// MAGIC OPTIMIZE books_db.books;
-// MAGIC VACUUM books_db.books;
+// MAGIC OPTIMIZE books_db_vkm.books;
+// MAGIC VACUUM books_db_vkm.books;
 
 // COMMAND ----------
 
@@ -284,13 +290,13 @@ display(dbutils.fs.ls("/mnt/workshop/curated/books"))
 
 // MAGIC %sql
 // MAGIC --1) Lets isolate records to delete
-// MAGIC select * from books_db.books where book_pub_year>=1900;
+// MAGIC select * from books_db_vkm.books where book_pub_year>=1900;
 
 // COMMAND ----------
 
 // MAGIC %sql
 // MAGIC --2) Execute delete
-// MAGIC USE books_db;
+// MAGIC USE books_db_vkm;
 // MAGIC 
 // MAGIC DELETE FROM books where book_pub_year >= 1900;
 
@@ -298,13 +304,13 @@ display(dbutils.fs.ls("/mnt/workshop/curated/books"))
 
 // MAGIC %sql
 // MAGIC --3) Lets validate
-// MAGIC select * from books_db.books where book_pub_year>=1900;
+// MAGIC select * from books_db_vkm.books where book_pub_year>=1900;
 
 // COMMAND ----------
 
 // MAGIC %sql
 // MAGIC --4) Lets validate further
-// MAGIC select * from books_db.books;
+// MAGIC select * from books_db_vkm.books;
 
 // COMMAND ----------
 
@@ -342,14 +348,15 @@ booksOverwriteDF.show()
 // COMMAND ----------
 
 // 2) Overwrite the table
-booksOverwriteDF.write.format("delta").mode("overwrite").save("/mnt/workshop/curated/books")
+//booksOverwriteDF.write.format("delta").mode("overwrite").save("/mnt/workshop/curated/books")
+booksOverwriteDF.write.format("delta").mode("overwrite").save("/mnt/vm186007/files/curated/books")
 
 // COMMAND ----------
 
 // MAGIC %sql
 // MAGIC -- 3) Query
 // MAGIC -- Notice the "- the great" in the name in the couple records?
-// MAGIC select * from books_db.books;
+// MAGIC select * from books_db_vkm.books;
 
 // COMMAND ----------
 
@@ -375,13 +382,14 @@ booksNewColDF.write
   .format("delta")
   .option("mergeSchema", "true")
   .mode("overwrite")
-  .save("/mnt/workshop/curated/books")
+  //.save("/mnt/workshop/curated/books")
+  .save("/mnt/vm186007/files/curated/books")
 
 // COMMAND ----------
 
 // MAGIC %sql
 // MAGIC -- 3) Query
-// MAGIC select * from books_db.books;
+// MAGIC select * from books_db_vkm.books;
 
 // COMMAND ----------
 
@@ -408,33 +416,40 @@ booksPartitionedDF.show()
 // COMMAND ----------
 
 // 2) Persist
-dbutils.fs.rm("/mnt/workshop/curated/delta/books-part", recurse=true)
+// dbutils.fs.rm("/mnt/workshop/curated/delta/books-part", recurse=true)
+dbutils.fs.rm("/mnt/vm186007/files/curated/delta/books-part", recurse=true)
+
 
 booksPartitionedDF.write
   .format("delta")
   .partitionBy("book_author")
-  .save("/mnt/workshop/curated/delta/books-part")
+  //.save("/mnt/workshop/curated/delta/books-part"
+  .save("/mnt/vm186007/files/curated/delta/books-part"
+       )
 
 // COMMAND ----------
 
 // MAGIC %sql
 // MAGIC -- 3) Create table
-// MAGIC USE books_db;
+// MAGIC USE books_db_vkm;
 // MAGIC DROP TABLE IF EXISTS books_part;
 // MAGIC CREATE TABLE books_part
 // MAGIC USING DELTA
-// MAGIC LOCATION "/mnt/workshop/curated/delta/books-part";
+// MAGIC --LOCATION "/mnt/workshop/curated/delta/books-part"
+// MAGIC LOCATION "/mnt/vm186007/files/curated/delta/books-part"
+// MAGIC ;
 
 // COMMAND ----------
 
 // MAGIC %sql
 // MAGIC -- 4) Seamless
-// MAGIC select * from books_db.books_part;
+// MAGIC select * from books_db_vkm.books_part;
 
 // COMMAND ----------
 
 // 5) Is it really partitioned?
-display(dbutils.fs.ls("/mnt/workshop/curated/delta/books-part"))
+// display(dbutils.fs.ls("/mnt/workshop/curated/delta/books-part"))
+display(dbutils.fs.ls("/mnt/vm186007/files/curated/delta/books-part"))
 
 // COMMAND ----------
 
@@ -449,4 +464,8 @@ display(dbutils.fs.ls("/mnt/workshop/curated/delta/books-part"))
 // COMMAND ----------
 
 // MAGIC %sql
-// MAGIC DESCRIBE HISTORY books_db.books;
+// MAGIC DESCRIBE HISTORY books_db_vkm.books;
+
+// COMMAND ----------
+
+

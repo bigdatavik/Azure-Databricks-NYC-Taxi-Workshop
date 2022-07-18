@@ -202,7 +202,7 @@ display(dbutils.fs.ls("/mnt/workshop-adlsgen2"))
 // COMMAND ----------
 
 //Refresh mounts if applicable
-//dbutils.fs.refreshMounts()
+dbutils.fs.refreshMounts()
 
 // COMMAND ----------
 
