@@ -39,6 +39,7 @@ val spSecret = dbutils.secrets.get(scope = "common-sp", key = "common-sa-sp-clie
 val sp2Id = dbutils.secrets.get(scope = "common-sp", key = "common-sa-sp2-client-id")
 val sp2Secret = dbutils.secrets.get(scope = "common-sp", key = "common-sa-sp2-client-secret")
 
+
 // COMMAND ----------
 
 // val configs = Map(
@@ -63,10 +64,12 @@ val adlsConfigs = Map("fs.azure.account.auth.type" -> "OAuth",
 // Replace gwsadlsgen2sa with your ADLS Gen2 Account name
 // val adlsgen2acct = "gwsadlsgen2sa"
 // val adlsgen2key = dbutils.secrets.get(scope = "gws-adlsgen2-storage", key = "storage-acct-key")
+//  "spark.hadoop.fs.azure.account.key.dltdemostorage.dfs.core.windows.net": "{{secrets/access_creds/adlsDltDemoStorageAccessKey}}"
 
 val adlsgen2acct = "vm186007"
-val adlsgen2key = "L/vh5rUx1L2bkvP+NZNFdPG26oVxAJMf5O6ZUW4YNkvmUS0UBouoOMMlqmJoyjmH+RsWCFSCOs0v+AStKCB0DQ=="
+val adlsgen2key = dbutils.secrets.get(scope = "access_creds_vkm", key = "adlsDltDemoStorageAccessKey")
 spark.conf.set("fs.azure.account.key." + adlsgen2acct + ".dfs.core.windows.net", adlsgen2key) 
+
 
 // COMMAND ----------
 
