@@ -66,12 +66,14 @@ display(dbutils.fs.ls(localFile))
 // COMMAND ----------
 
 //1) Create destination directory
-val dbfsDirPath="/mnt/workshop/staging/crimes/chicago-crimes"
+// val dbfsDirPath="/mnt/workshop/staging/crimes/chicago-crimes"  
+val dbfsDirPath="/mnt/vm186007/files/staging/crimes/chicago-crimes"
 dbutils.fs.rm(dbfsDirPath, recurse=true)
 dbutils.fs.mkdirs(dbfsDirPath)
 
 // COMMAND ----------
 
+// DBTITLE 1,Move data to the staging location on adls2
 //2) Upload to from localDirPath to dbfsDirPath
 dbutils.fs.cp(localFile, dbfsDirPath, recurse=true)
 
@@ -88,11 +90,13 @@ display(dbutils.fs.ls(dbfsDirPath))
 
 // COMMAND ----------
 
+// DBTITLE 1,Source Location of Data and Target Location of Parquet Table
 //1) Source directory
-val dbfsSrcDirPath="/mnt/workshop/staging/crimes/chicago-crimes"
-
+//val dbfsSrcDirPath="/mnt/workshop/staging/crimes/chicago-crimes"
+val dbfsSrcDirPath="/mnt/vm186007/files/staging/crimes/chicago-crimes"
 //2) Destination directory
-val dbfsDestDirPath="/mnt/workshop/raw/crimes/chicago-crimes"
+//val dbfsDestDirPath="/mnt/workshop/raw/crimes/chicago-crimes"
+val dbfsDestDirPath="/mnt/vm186007/files/raw/crimes/chicago-crimes"
 
 // COMMAND ----------
 
@@ -101,6 +105,7 @@ dbutils.fs.head(dbfsSrcDirPath + "/chicago-crimes.csv")
 
 // COMMAND ----------
 
+// DBTITLE 1,Parquet Table Location
 //4)  Read raw CSV
 val sourceDF = spark.read.format("csv")
   .option("header", "true").load(dbfsSrcDirPath).toDF("case_id", "case_nbr", "case_dt_tm", "block", "iucr", "primary_type", "description", "location_description", "arrest_made", "was_domestic", "beat", "district", "ward", "community_area", "fbi_code", "x_coordinate", "y_coordinate", "case_year", "updated_dt", "latitude", "longitude", "location_coords")
@@ -124,24 +129,88 @@ display(dbutils.fs.ls(dbfsDestDirPath))
 
 // COMMAND ----------
 
+// DBTITLE 1,Delta Table location
+//  write as delta
+val dbfsDestDirPathDelta="/mnt/vm186007/files/raw/crimes/chicago-crimes-delta"
+//Persist dataframe to delta format without coalescing
+sourceDF.write.format("delta").mode("overwrite").save(dbfsDestDirPathDelta)
+
+// COMMAND ----------
+
 // MAGIC %md
 // MAGIC ### 4. Define external table
 
 // COMMAND ----------
 
 // MAGIC %sql
+// MAGIC --CREATE DATABASE IF NOT EXISTS CRIMES_DB_vkm2;
+// MAGIC --DROP DATABASE crimes_db_vkm2
+
+// COMMAND ----------
+
+// DBTITLE 1,Create Parquet Table
+// MAGIC %sql
 // MAGIC 
-// MAGIC CREATE DATABASE IF NOT EXISTS CRIMES_DB;
+// MAGIC CREATE DATABASE IF NOT EXISTS CRIMES_DB_vkm;
 // MAGIC 
-// MAGIC USE CRIMES_DB;
+// MAGIC USE CRIMES_DB_vkm;
 // MAGIC 
 // MAGIC DROP TABLE IF EXISTS chicago_crimes_raw;
 // MAGIC CREATE TABLE IF NOT EXISTS chicago_crimes_raw
 // MAGIC USING parquet
-// MAGIC OPTIONS (path "/mnt/workshop/raw/crimes/chicago-crimes");
+// MAGIC OPTIONS (path "/mnt/vm186007/files/raw/crimes/chicago-crimes");
+// MAGIC --OPTIONS (path "/mnt/workshop/raw/crimes/chicago-crimes");
 // MAGIC --USING org.apache.spark.sql.parquet
 // MAGIC 
 // MAGIC ANALYZE TABLE chicago_crimes_raw COMPUTE STATISTICS;
+
+// COMMAND ----------
+
+// DBTITLE 1,Convert Parquet file to delta
+// MAGIC %sql
+// MAGIC CONVERT TO DELTA parquet.`/mnt/vm186007/files/raw/crimes/chicago-crimes`
+
+// COMMAND ----------
+
+// DBTITLE 1,Create Delta Table on the converted parquet files
+// MAGIC %sql
+// MAGIC USE hive_metastore.CRIMES_DB_vkm;
+// MAGIC 
+// MAGIC DROP TABLE IF EXISTS chicago_crimes_raw_parquet_to_delta;
+// MAGIC CREATE TABLE IF NOT EXISTS chicago_crimes_raw_parquet_to_delta
+// MAGIC USING DELTA
+// MAGIC LOCATION "/mnt/vm186007/files/raw/crimes/chicago-crimes";
+// MAGIC --OPTIONS (path "/mnt/workshop/raw/crimes/chicago-crimes");
+// MAGIC --USING org.apache.spark.sql.parquet
+// MAGIC 
+// MAGIC --ANALYZE TABLE chicago_crimes_raw COMPUTE STATISTICS;
+
+// COMMAND ----------
+
+// MAGIC %sql
+// MAGIC USE hive_metastore.CRIMES_DB_vkm;
+// MAGIC --SELECT * FROM chicago_crimes_raw;
+// MAGIC SELECT count(*) FROM chicago_crimes_raw_parquet_to_delta;
+// MAGIC 
+// MAGIC --6,701,049
+
+// COMMAND ----------
+
+// DBTITLE 1,Create Delta Table
+// MAGIC %sql
+// MAGIC 
+// MAGIC CREATE DATABASE IF NOT EXISTS hive_metastore.CRIMES_DB_vkm;
+// MAGIC 
+// MAGIC USE hive_metastore.CRIMES_DB_vkm;
+// MAGIC 
+// MAGIC DROP TABLE IF EXISTS chicago_crimes_raw_delta;
+// MAGIC CREATE TABLE IF NOT EXISTS chicago_crimes_raw_delta
+// MAGIC USING DELTA
+// MAGIC LOCATION "/mnt/vm186007/files/raw/crimes/chicago-crimes-delta";
+// MAGIC --OPTIONS (path "/mnt/workshop/raw/crimes/chicago-crimes");
+// MAGIC --USING org.apache.spark.sql.parquet
+// MAGIC 
+// MAGIC --ANALYZE TABLE chicago_crimes_raw COMPUTE STATISTICS;
 
 // COMMAND ----------
 
@@ -150,10 +219,21 @@ display(dbutils.fs.ls(dbfsDestDirPath))
 
 // COMMAND ----------
 
+// DBTITLE 1,Parquet Table
 // MAGIC %sql
-// MAGIC USE crimes_db;
+// MAGIC USE hive_metastore.CRIMES_DB_vkm;
 // MAGIC --SELECT * FROM chicago_crimes_raw;
 // MAGIC SELECT count(*) FROM chicago_crimes_raw;
+// MAGIC 
+// MAGIC --6,701,049
+
+// COMMAND ----------
+
+// DBTITLE 1,Delta Table
+// MAGIC %sql
+// MAGIC USE hive_metastore.CRIMES_DB_vkm;
+// MAGIC --SELECT * FROM chicago_crimes_raw;
+// MAGIC SELECT count(*) FROM chicago_crimes_raw_delta;
 // MAGIC 
 // MAGIC --6,701,049
 
@@ -165,6 +245,7 @@ display(dbutils.fs.ls(dbfsDestDirPath))
 
 // COMMAND ----------
 
+// DBTITLE 1,Parquet Table
 // 1) Read and curate
 // Lets add some temporal attributes that can help us analyze trends over time
 
@@ -196,8 +277,44 @@ curatedDF.show
 
 // COMMAND ----------
 
+// DBTITLE 1,Delta table
+// 1) Read and curate
+// Lets add some temporal attributes that can help us analyze trends over time
+
+import org.apache.spark.sql.functions.to_timestamp
+import org.apache.spark.sql.types.{StructType, StructField, StringType, IntegerType,LongType,FloatType,DoubleType, TimestampType, DecimalType}
+//11/09/2001 12:40:00 AM'
+
+spark.sql("set spark.sql.legacy.timeParserPolicy=LEGACY")
+val to_timestamp_func = to_timestamp($"case_dt_tm", "MM/dd/yyyy hh:mm:ss")
+
+val rawDFdelta = spark.sql("select * from hive_metastore.CRIMES_DB_vkm.chicago_crimes_raw_delta")
+val curatedDFdelta = rawDFdelta.withColumn("case_timestamp",to_timestamp_func)
+                      .withColumn("case_month", month(col("case_timestamp")))
+                      .withColumn("case_day_of_month", dayofmonth(col("case_timestamp")))
+                      .withColumn("case_hour", hour(col("case_timestamp")))
+                      .withColumn("case_day_of_week_nbr", dayofweek(col("case_timestamp")))
+                      .withColumn("case_day_of_week_name", when(col("case_day_of_week_nbr") === lit(1), "Sunday")
+                                                          .when(col("case_day_of_week_nbr") === lit(2), "Monday")
+                                                          .when(col("case_day_of_week_nbr") === lit(3), "Tuesday")
+                                                          .when(col("case_day_of_week_nbr") === lit(4), "Wednesday")
+                                                          .when(col("case_day_of_week_nbr") === lit(5), "Thursday")
+                                                          .when(col("case_day_of_week_nbr") === lit(6), "Friday")
+                                                          .when(col("case_day_of_week_nbr") === lit(7), "Sunday")
+                                 )
+                      .withColumn("latitude_dec", col("latitude").cast(DecimalType(10,7)))
+                      .withColumn("longitude_dec", col("longitude").cast(DecimalType(10,7)))
+                      
+                                                          
+curatedDFdelta.printSchema
+curatedDFdelta.show  
+
+// COMMAND ----------
+
 //2) Persist as parquet to curated storage zone
-val dbfsDestDirPath="/mnt/workshop/curated/crimes/chicago-crimes"
+//val dbfsDestDirPath="/mnt/workshop/curated/crimes/chicago-crimes"
+val dbfsDestDirPath="/mnt/vm186007/files/curated/crimes/chicago-crimes
+
 dbutils.fs.rm(dbfsDestDirPath, recurse=true)
 curatedDF.coalesce(1).write.partitionBy("case_year","case_month").parquet(dbfsDestDirPath)
 

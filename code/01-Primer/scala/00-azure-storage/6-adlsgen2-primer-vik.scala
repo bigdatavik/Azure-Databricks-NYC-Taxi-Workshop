@@ -68,8 +68,7 @@ val adlsConfigs = Map("fs.azure.account.auth.type" -> "OAuth",
 
 val adlsgen2acct = "vm186007"
 val adlsgen2key = dbutils.secrets.get(scope = "access_creds_vkm", key = "adlsDltDemoStorageAccessKey")
-spark.conf.set("fs.azure.account.key." + adlsgen2acct + ".dfs.core.windows.net", adlsgen2key) 
-
+spark.conf.set("fs.azure.account.key." + adlsgen2acct + ".dfs.core.windows.net", adlsgen2key)
 
 // COMMAND ----------
 
@@ -95,6 +94,10 @@ dbutils.fs.ls("abfss://staging@vm186007.dfs.core.windows.net/")
 
 // MAGIC %md
 // MAGIC ### 3.0. Mount ADLS Gen2 as file system
+
+// COMMAND ----------
+
+dbutils.fs.ls("/mnt/vm186007/files")
 
 // COMMAND ----------
 
@@ -163,7 +166,7 @@ dbutils.fs.mount(
 
 // COMMAND ----------
 
-// MAGIC %fs
+// MAGIC %md
 // MAGIC head /mnt/adlsgen2sa/staging/If-By-Kipling.txt
 
 // COMMAND ----------
